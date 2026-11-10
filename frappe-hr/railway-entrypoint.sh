@@ -11,7 +11,7 @@ SITE="${SITE_NAME:-hr}"
 SEED=/home/frappe/bench-seed
 
 log() { echo "railway-entrypoint: $*"; }
-as_frappe() { setpriv --reuid=frappe --regid=frappe --init-groups --inh-caps=-all env HOME=/home/frappe "$@"; }
+as_frappe() { setpriv --reuid=frappe --regid=0 --init-groups --inh-caps=-all env HOME=/home/frappe "$@"; }
 
 require() {
     if [ -z "${!1:-}" ]; then
@@ -29,7 +29,7 @@ require FRAPPE_API_SECRET
 # --- the volume ------------------------------------------------------------
 # Railway mounts volumes owned by uid 0. Everything here runs as frappe.
 log "preparing $SITES"
-chown -R frappe:frappe "$SITES"
+chown -R frappe:root "$SITES"
 # bench treats every directory under sites/ as a site; lost+found is not one.
 rm -rf "$SITES/lost+found"
 
@@ -40,15 +40,15 @@ rm -rf "$SITES/lost+found"
 for f in apps.txt apps.json; do
     if [ ! -f "$SITES/$f" ]; then
         log "restoring $f"
-        install -o frappe -g frappe -m 644 "$SEED/$f" "$SITES/$f"
+        install -o frappe -g root -m 644 "$SEED/$f" "$SITES/$f"
     fi
 done
 rm -rf "$SITES/assets"
 ln -s "$BENCH/assets" "$SITES/assets"
-chown -h frappe:frappe "$SITES/assets"
+chown -h frappe:root "$SITES/assets"
 
 mkdir -p "$SITES/redis"
-chown frappe:frappe "$SITES/redis"
+chown frappe:root "$SITES/redis"
 
 # --- common_site_config.json ----------------------------------------------
 # Regenerated from the environment on every boot: it holds only the wiring
@@ -155,7 +155,7 @@ fi
 # and the pair survives redeploys. Changing the variables rotates it.
 log "setting the Administrator API key"
 start_setup_redis
-as_frappe env HOME=/home/frappe SITES_PATH="$SITES" SITE="$SITE" \
+(cd "$SITES" && as_frappe env HOME=/home/frappe SITES_PATH="$SITES" SITE="$SITE" \
     "$BENCH/env/bin/python" - <<'PYEOF'
 import os
 import frappe
@@ -170,6 +170,7 @@ user.save()
 frappe.db.commit()
 frappe.destroy()
 PYEOF
+)
 as_frappe redis-cli shutdown nosave >/dev/null 2>&1 || true
 
 # --- run -------------------------------------------------------------------
@@ -177,6 +178,6 @@ log "starting bench (nginx on ${PORT:-8080}, ${GUNICORN_WORKERS:-2} gunicorn wor
 # honcho hands each Procfile process its own PORT (base, then +100 per process
 # type), so nginx cannot read the deploy's real port from $PORT.
 export NGINX_PORT="${PORT:-8080}"
-exec setpriv --reuid=frappe --regid=frappe --init-groups --inh-caps=-all \
+exec setpriv --reuid=frappe --regid=0 --init-groups --inh-caps=-all \
     env HOME=/home/frappe NGINX_PORT="$NGINX_PORT" \
     honcho --app-root "$BENCH" -f "$BENCH/Procfile.railway" start

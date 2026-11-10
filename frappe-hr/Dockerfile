@@ -37,9 +37,9 @@ RUN mkdir -p /home/frappe/bench-seed \
     && cp /home/frappe/frappe-bench/sites/apps.txt \
           /home/frappe/frappe-bench/sites/apps.json \
           /home/frappe/bench-seed/ \
-    && chown -R frappe:frappe /home/frappe/bench-seed
+    && chown -R frappe:root /home/frappe/bench-seed
 
-COPY --chown=frappe:frappe Procfile /home/frappe/frappe-bench/Procfile.railway
+COPY --chown=frappe:root Procfile /home/frappe/frappe-bench/Procfile.railway
 COPY railway-nginx.sh /usr/local/bin/railway-nginx.sh
 COPY railway-entrypoint.sh /usr/local/bin/railway-entrypoint.sh
 RUN chmod +x /usr/local/bin/railway-nginx.sh /usr/local/bin/railway-entrypoint.sh
