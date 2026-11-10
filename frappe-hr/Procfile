@@ -1,0 +1,6 @@
+redis: redis-server --port 6379 --dir /home/frappe/frappe-bench/sites/redis --appendonly no --save 900 1 --maxmemory-policy noeviction
+web: /home/frappe/frappe-bench/env/bin/gunicorn --chdir=/home/frappe/frappe-bench/sites --bind=127.0.0.1:8000 --worker-class=gthread --workers=$GUNICORN_WORKERS --threads=$GUNICORN_THREADS --worker-tmp-dir=/dev/shm --timeout=120 --graceful-timeout=30 --preload frappe.app:application
+socketio: node /home/frappe/frappe-bench/apps/frappe/socketio.js
+schedule: bench schedule
+worker: bench worker --queue $FRAPPE_WORKER_QUEUES
+nginx: /usr/local/bin/railway-nginx.sh
